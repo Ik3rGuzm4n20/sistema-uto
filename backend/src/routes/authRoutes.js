@@ -1,10 +1,14 @@
 import { Router } from 'express'
+import { registro, login, perfil } from '../controllers/authController.js'
+import { verificarToken } from '../middlewares/authMiddleware.js'
 
 const router = Router()
 
-// Ruta de prueba
-router.get('/', (req, res) => {
-  res.json({ message: 'Rutas de autenticación funcionando ✅' })
-})
+// Rutas públicas (no necesitan token)
+router.post('/registro', registro)
+router.post('/login', login)
+
+// Rutas protegidas (necesitan token)
+router.get('/perfil', verificarToken, perfil)
 
 export default router
