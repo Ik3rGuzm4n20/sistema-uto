@@ -1,10 +1,31 @@
 import { Router } from 'express'
+import {
+  crearTicket,
+  obtenerTickets,
+  obtenerTicketPorId,
+  actualizarEstado,
+  dashboard
+} from '../controllers/ticketController.js'
+import { verificarToken, verificarRol } from '../middlewares/authMiddleware.js'
 
 const router = Router()
 
-// Ruta de prueba
-router.get('/', (req, res) => {
-  res.json({ message: 'Rutas de tickets funcionando ✅' })
-})
+// Todas las rutas de tickets requieren token
+router.use(verificarToken)
+
+// Crear ticket — cualquier usuario autenticado
+router.post('/', crearTicket)
+
+// Obtener todos los tickets — según rol
+router.get('/', obtenerTickets)
+
+// Dashboard métricas — solo admin y técnicos
+router.get('/dashboard', verificarRol('administrador', 'tecnico_n1', 'tecnico_n2'), dashboard)
+
+// Obtener ticket por ID
+router.get('/:id', obtenerTicketPorId)
+
+// Actualizar estado — solo técnicos y admin
+router.patch('/:id/estado', verificarRol('administrador', 'tecnico_n1', 'tecnico_n2'), actualizarEstado)
 
 export default router
