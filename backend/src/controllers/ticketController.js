@@ -258,6 +258,7 @@ export const dashboard = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
+}
 
 // ── REASIGNAR TÉCNICO ──────────────────────────────────────────────────────────
 export const reasignarTecnico = async (req, res) => {
@@ -308,6 +309,4 @@ export const reasignarTecnico = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
-}
-  
 }
