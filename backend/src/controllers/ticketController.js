@@ -164,8 +164,9 @@ export const actualizarEstado = async (req, res) => {
     const { id } = req.params
     const { estado, nota } = req.body
     const usuario_id = req.usuario.id
+    const rol = req.usuario.rol
 
-    // Flujo permitido de estados
+    // Flujo permitido de estados (aplica solo a técnicos)
     const flujo = {
       abierto: ['en_proceso'],
       en_proceso: ['escalado', 'resuelto'],
@@ -180,11 +181,15 @@ export const actualizarEstado = async (req, res) => {
       .eq('id', id)
       .single()
 
-    const estadosPermitidos = flujo[ticketActual.estado] || []
-    if (!estadosPermitidos.includes(estado)) {
-      return res.status(400).json({
-        error: `No puedes cambiar de ${ticketActual.estado} a ${estado}`
-      })
+    // El administrador puede cambiar a cualquier estado
+    // Los técnicos deben seguir el flujo definido
+    if (rol !== 'administrador') {
+      const estadosPermitidos = flujo[ticketActual.estado] || []
+      if (!estadosPermitidos.includes(estado)) {
+        return res.status(400).json({
+          error: `No puedes cambiar de ${ticketActual.estado} a ${estado}`
+        })
+      }
     }
 
     // Actualizar estado
@@ -253,4 +258,56 @@ export const dashboard = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
+
+// ── REASIGNAR TÉCNICO ──────────────────────────────────────────────────────────
+export const reasignarTecnico = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { tecnico_asignado_id, justificacion } = req.body
+    const usuario_id = req.usuario.id
+
+    // Verificar que el técnico exista y tenga el rol correcto
+    const { data: tecnico, error: errorTecnico } = await supabase
+      .from('usuarios')
+      .select('id, nombre, correo, rol')
+      .eq('id', tecnico_asignado_id)
+      .in('rol', ['tecnico_n1', 'tecnico_n2'])
+      .single()
+
+    if (errorTecnico || !tecnico) {
+      return res.status(400).json({ error: 'Técnico no válido' })
+    }
+
+    // Actualizar el ticket
+    const { data, error } = await supabase
+      .from('tickets')
+      .update({ tecnico_asignado_id, updated_at: new Date() })
+      .eq('id', id)
+      .select()
+
+    if (error) throw error
+
+    // Registrar en bitácora
+    await supabase.from('bitacora').insert([{
+      ticket_id: id,
+      usuario_id,
+      accion: 'TICKET_REASIGNADO',
+      descripcion: justificacion
+        ? `Reasignado a ${tecnico.nombre}. Motivo: ${justificacion}`
+        : `Reasignado a ${tecnico.nombre}`
+    }])
+
+    // Notificar al nuevo técnico por correo
+    await enviarCorreoTicketAsignado(tecnico, data[0])
+
+    res.json({
+      message: `Ticket reasignado a ${tecnico.nombre}`,
+      ticket: data[0]
+    })
+
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+}
+  
 }

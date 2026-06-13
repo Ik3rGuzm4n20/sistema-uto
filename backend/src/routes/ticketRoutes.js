@@ -4,7 +4,8 @@ import {
   obtenerTickets,
   obtenerTicketPorId,
   actualizarEstado,
-  dashboard
+  dashboard,
+  reasignarTecnico
 } from '../controllers/ticketController.js'
 import { verificarToken, verificarRol } from '../middlewares/authMiddleware.js'
 
@@ -27,5 +28,8 @@ router.get('/:id', obtenerTicketPorId)
 
 // Actualizar estado — solo técnicos y admin
 router.patch('/:id/estado', verificarRol('administrador', 'tecnico_n1', 'tecnico_n2'), actualizarEstado)
+
+// Reasignar técnico — solo admin
+router.patch('/:id/reasignar', verificarRol('administrador'), reasignarTecnico)
 
 export default router
