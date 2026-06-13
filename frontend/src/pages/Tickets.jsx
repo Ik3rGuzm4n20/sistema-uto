@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { obtenerTickets, actualizarEstado } from '../services/ticketService'
+import { obtenerTickets, actualizarEstado, reasignarTecnico } from '../services/ticketService'
+import { listarTecnicos } from '../services/usuarioService'
+
 
 const Tickets = () => {
   const { usuario } = useAuth()
@@ -10,11 +12,25 @@ const Tickets = () => {
   const [tickets, setTickets] = useState([])
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(true)
+  const [tecnicos, setTecnicos] = useState([])
+  const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => {
     document.title = 'Tickets - Sistema UTO'
     cargarTickets()
+    if (usuario?.rol === 'administrador') {
+      cargarTecnicos()
+    }
   }, [])
+
+   const cargarTecnicos = async () => {
+    try {
+      const data = await listarTecnicos()
+      setTecnicos(data.tecnicos)
+    } catch (err) {
+      console.error('No se pudieron cargar técnicos')
+    }
+  }
 
   const cargarTickets = async () => {
     try {
@@ -30,11 +46,32 @@ const Tickets = () => {
   const handleCambiarEstado = async (id, nuevoEstado) => {
     try {
       await actualizarEstado(id, nuevoEstado, `Cambiado a ${nuevoEstado} desde el panel`)
-      cargarTickets() // recarga la lista
+      cargarTickets()
     } catch (err) {
       alert(err.response?.data?.error || 'No se pudo actualizar el estado')
     }
   }
+
+  const handleReasignar = async (id, tecnicoId) => {
+    if (!tecnicoId) return
+    try {
+      await reasignarTecnico(id, tecnicoId, 'Reasignado desde el panel de administración')
+      cargarTickets()
+    } catch (err) {
+      alert(err.response?.data?.error || 'No se pudo reasignar el ticket')
+    }
+  }
+
+  const handleCambiarEstadoAdmin = async (id, nuevoEstado) => {
+    if (!nuevoEstado) return
+    try {
+      await actualizarEstado(id, nuevoEstado, `Cambiado a ${nuevoEstado} por administrador`)
+      cargarTickets()
+    } catch (err) {
+      alert(err.response?.data?.error || 'No se pudo actualizar el estado')
+    }
+
+}
 
   // Próximo estado posible según el flujo definido en el backend
   const siguienteEstado = {
@@ -60,6 +97,16 @@ const Tickets = () => {
   }
 
   const puedeCambiarEstado = ['administrador', 'tecnico_n1', 'tecnico_n2'].includes(usuario?.rol)
+  const esAdmin = usuario?.rol === 'administrador'
+
+  // Filtrar tickets según búsqueda (código, título o categoría)
+  const ticketsFiltrados = tickets.filter((t) =>
+    t.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
+    t.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
+    t.categoria.toLowerCase().includes(busqueda.toLowerCase())
+  )
+
+  const estadosDisponibles = ['abierto', 'en_proceso', 'escalado', 'resuelto', 'cerrado']
 
   return (
     <div style={estilos.contenedor}>
@@ -86,6 +133,16 @@ const Tickets = () => {
         {error && <p style={estilos.error}>{error}</p>}
         {cargando && <p>Cargando tickets...</p>}
 
+        {!cargando && tickets.length > 0 && (
+          <input
+            type="text"
+            placeholder="🔍 Buscar por código, título o categoría..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            style={estilos.buscador}
+          />
+        )}
+
         {!cargando && tickets.length === 0 && (
           <p style={estilos.vacio}>No hay tickets registrados todavía.</p>
         )}
@@ -98,18 +155,26 @@ const Tickets = () => {
                   <th style={estilos.th}>Código</th>
                   <th style={estilos.th}>Título</th>
                   <th style={estilos.th}>Categoría</th>
+                  {esAdmin && <th style={estilos.th}>Técnico Asignado</th>}
                   <th style={estilos.th}>Prioridad</th>
                   <th style={estilos.th}>Estado</th>
                   <th style={estilos.th}>SLA Límite</th>
-                  {puedeCambiarEstado && <th style={estilos.th}>Acción</th>}
+                  {puedeCambiarEstado && !esAdmin && <th style={estilos.th}>Acción</th>}
+                  {esAdmin && <th style={estilos.th}>Cambiar Estado</th>}
+                  {esAdmin && <th style={estilos.th}>Reasignar Técnico</th>}
                 </tr>
               </thead>
               <tbody>
-                {tickets.map((ticket) => (
+                 {ticketsFiltrados.map((ticket) => (
                   <tr key={ticket.id}>
                     <td style={estilos.td}><strong>{ticket.codigo}</strong></td>
                     <td style={estilos.td}>{ticket.titulo}</td>
                     <td style={estilos.td}>{ticket.categoria}</td>
+                    {esAdmin && (
+                      <td style={estilos.td}>
+                        {tecnicos.find(t => t.id === ticket.tecnico_asignado_id)?.nombre || 'Sin asignar'}
+                      </td>
+                    )}
                     <td style={estilos.td}>
                       <span style={{
                         ...estilos.badge,
@@ -129,7 +194,7 @@ const Tickets = () => {
                     <td style={estilos.td}>
                       {new Date(ticket.sla_limite).toLocaleString('es-GT')}
                     </td>
-                    {puedeCambiarEstado && (
+                    {puedeCambiarEstado && !esAdmin && (
                       <td style={estilos.td}>
                         {siguienteEstado[ticket.estado] ? (
                           <button
@@ -141,6 +206,42 @@ const Tickets = () => {
                         ) : (
                           <span style={{ color: '#999', fontSize: '12px' }}>Sin acciones</span>
                         )}
+                      </td>
+                    )}
+
+                    {esAdmin && (
+                      <td style={estilos.td}>
+                        <select
+                          defaultValue=""
+                          onChange={(e) => handleCambiarEstadoAdmin(ticket.id, e.target.value)}
+                          style={estilos.selectAdmin}
+                        >
+                          <option value="">Cambiar a...</option>
+                          {estadosDisponibles
+                            .filter((e) => e !== ticket.estado)
+                            .map((e) => (
+                              <option key={e} value={e}>
+                                {e.replace('_', ' ').toUpperCase()}
+                              </option>
+                            ))}
+                        </select>
+                      </td>
+                    )}
+
+                    {esAdmin && (
+                      <td style={estilos.td}>
+                        <select
+                          defaultValue=""
+                          onChange={(e) => handleReasignar(ticket.id, e.target.value)}
+                          style={estilos.selectAdmin}
+                        >
+                          <option value="">Reasignar a...</option>
+                          {tecnicos.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.nombre} ({t.rol})
+                            </option>
+                          ))}
+                        </select>
                       </td>
                     )}
                   </tr>
@@ -255,6 +356,26 @@ const estilos = {
     color: '#666',
     textAlign: 'center',
     padding: '40px'
+  },
+  buscador: {
+    width: '100%',
+    padding: '12px',
+    borderRadius: '6px',
+    border: '1px solid #BDD7EE',
+    fontSize: '14px',
+    marginBottom: '20px',
+    backgroundColor: 'white',
+    color: '#333',
+    boxSizing: 'border-box'
+  },
+  selectAdmin: {
+    padding: '6px 8px',
+    borderRadius: '4px',
+    border: '1px solid #BDD7EE',
+    fontSize: '12px',
+    backgroundColor: 'white',
+    color: '#333',
+    cursor: 'pointer'
   }
 }
 

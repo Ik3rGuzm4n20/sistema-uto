@@ -29,3 +29,9 @@ export const obtenerDashboard = async () => {
   const response = await api.get('/tickets/dashboard')
   return response.data
 }
+
+// ── REASIGNAR TÉCNICO ──────────────────────────────────────────────────────────
+export const reasignarTecnico = async (id, tecnico_asignado_id, justificacion) => {
+  const response = await api.patch(`/tickets/${id}/reasignar`, { tecnico_asignado_id, justificacion })
+  return response.data
+}
