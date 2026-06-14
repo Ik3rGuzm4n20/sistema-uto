@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { obtenerDashboard } from '../services/ticketService'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const Dashboard = () => {
   const { usuario, cerrarSesion } = useAuth()
@@ -55,6 +56,58 @@ const Dashboard = () => {
         <p style={estilos.subtitulo}>Métricas en tiempo real del sistema</p>
 
         {error && <p style={estilos.error}>{error}</p>}
+        
+        {metricas && (
+          <div style={estilos.graficasGrid}>
+            <div style={estilos.graficaCard}>
+              <h3 style={estilos.tituloGrafica}>Tickets por Estado</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Abiertos', value: metricas.abiertos },
+                      { name: 'En Proceso', value: metricas.en_proceso },
+                      { name: 'Resueltos Hoy', value: metricas.resueltos_hoy },
+                      { name: 'Cerrados', value: metricas.cerrados }
+                    ]}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label
+                  >
+                    <Cell fill="#2E75B6" />
+                    <Cell fill="#FFC000" />
+                    <Cell fill="#70AD47" />
+                    <Cell fill="#595959" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div style={estilos.graficaCard}>
+              <h3 style={estilos.tituloGrafica}>Tickets Críticos vs Total</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart
+                  data={[
+                    { nombre: 'Total', cantidad: metricas.total },
+                    { nombre: 'Críticos', cantidad: metricas.criticos },
+                    { nombre: 'Abiertos', cantidad: metricas.abiertos },
+                    { nombre: 'Cerrados', cantidad: metricas.cerrados }
+                  ]}
+                >
+                  <XAxis dataKey="nombre" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="cantidad" fill="#1F3864" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {metricas && (
           <div style={estilos.grid}>
@@ -154,6 +207,24 @@ const estilos = {
     color: '#666',
     marginTop: '0px',
     marginBottom: '40px',
+    fontSize: '16px'
+  },
+  graficasGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gap: '20px',
+    marginBottom: '30px'
+  },
+  graficaCard: {
+    backgroundColor: 'white',
+    padding: '20px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+  },
+  tituloGrafica: {
+    color: '#1F3864',
+    margin: 0,
+    marginBottom: '15px',
     fontSize: '16px'
   },
   grid: {
