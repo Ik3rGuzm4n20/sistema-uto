@@ -32,6 +32,14 @@ const Dashboard = () => {
     navigate('/login')
   }
 
+  const esAdmin = usuario?.rol === 'Administrador'
+  const nombresRoles = {
+    administrador: 'Administrador',
+    tecnico_n1: 'Técnico N1',
+    tecnico_n2: 'Técnico N2',
+    usuario_final: 'Usuario'
+  }
+
   return (
     <div style={estilos.contenedor}>
       {/* Navbar */}
@@ -39,7 +47,7 @@ const Dashboard = () => {
         <h2 style={estilos.logoNav}>Sistema UTO</h2>
         <div style={estilos.navDerecha}>
           <span style={estilos.usuarioNav}>
-            {usuario?.nombre} · <strong>{usuario?.rol}</strong>
+            {usuario?.nombre} · <strong>{nombresRoles[usuario?.rol] || usuario?.rol}</strong>
           </span>
           <button onClick={() => navigate('/tickets')} style={estilos.botonNav}>
             Tickets

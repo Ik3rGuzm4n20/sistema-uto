@@ -30,7 +30,7 @@ const NuevoTicket = () => {
         titulo, descripcion, categoria, tipo, urgencia, impacto
       })
       setExito(`Ticket creado: ${data.ticket.codigo}`)
-      setTimeout(() => navigate('/dashboard'), 2000)
+      setTimeout(() => navigate('/tickets'), 2000)
     } catch (err) {
       setError(err.response?.data?.error || 'Error al crear el ticket')
     } finally {
@@ -42,8 +42,8 @@ const NuevoTicket = () => {
     <div style={estilos.contenedor}>
       <nav style={estilos.navbar}>
         <h2 style={estilos.logoNav}>Sistema UTO</h2>
-        <button onClick={() => navigate('/dashboard')} style={estilos.botonNav}>
-          ← Volver al Dashboard
+        <button onClick={() => navigate('/tickets')} style={estilos.botonNav}>
+          ← Volver a Tickets
         </button>
       </nav>
 

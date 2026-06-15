@@ -6,7 +6,7 @@ export const listarTecnicos = async (req, res) => {
     const { data, error } = await supabase
       .from('usuarios')
       .select('id, nombre, correo, rol')
-      .in('rol', ['tecnico_n1', 'tecnico_n2'])
+      .in('rol', ['tecnico_n1', 'tecnico_n2', 'administrador'])
       .eq('estado', true)
       .order('nombre', { ascending: true })
 

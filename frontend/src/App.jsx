@@ -1,10 +1,13 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import PrivateRoute from './components/PrivateRoute'
 import Login from './pages/Login'
+import Bienvenida from './pages/Bienvenida'
+import Registro from './pages/Registro'
 import Dashboard from './pages/Dashboard'
 import Tickets from './pages/Tickets'
 import NuevoTicket from './pages/NuevoTicket'
+import TicketDetalle from './pages/TicketDetalle'
 
 function App() {
   return (
@@ -12,7 +15,9 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Ruta pública */}
+          <Route path="/" element={<Bienvenida />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/registro" element={<Registro />} />
 
           {/* Rutas protegidas */}
           <Route
@@ -39,9 +44,14 @@ function App() {
               </PrivateRoute>
             }
           />
-
-          {/* Redirección por defecto */}
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route
+            path="/tickets/:id"
+            element={
+              <PrivateRoute>
+                <TicketDetalle />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

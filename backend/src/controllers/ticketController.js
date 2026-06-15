@@ -128,10 +128,29 @@ export const obtenerTickets = async (req, res) => {
       query = query.eq('tecnico_asignado_id', id)
     }
 
-    const { data, error } = await query
+    const { data: tickets, error } = await query
     if (error) throw error
 
-    res.json({ tickets: data })
+    // Obtener nombres de los técnicos asignados
+    const tecnicoIds = [...new Set(tickets.map(t => t.tecnico_asignado_id).filter(Boolean))]
+
+    let tecnicosMap = {}
+    if (tecnicoIds.length > 0) {
+      const { data: tecnicos } = await supabase
+        .from('usuarios')
+        .select('id, nombre')
+        .in('id', tecnicoIds)
+
+      tecnicosMap = Object.fromEntries(tecnicos.map(t => [t.id, t.nombre]))
+    }
+
+    // Agregar el nombre del técnico a cada ticket
+    const ticketsConTecnico = tickets.map(t => ({
+      ...t,
+      tecnico_nombre: t.tecnico_asignado_id ? tecnicosMap[t.tecnico_asignado_id] : null
+    }))
+
+    res.json({ tickets: ticketsConTecnico })
 
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -143,7 +162,7 @@ export const obtenerTicketPorId = async (req, res) => {
   try {
     const { id } = req.params
 
-    const { data, error } = await supabase
+    const { data: ticket, error } = await supabase
       .from('tickets')
       .select('*')
       .eq('id', id)
@@ -151,7 +170,25 @@ export const obtenerTicketPorId = async (req, res) => {
 
     if (error) throw error
 
-    res.json({ ticket: data })
+    // Obtener datos del usuario que creó el ticket
+    const { data: creador } = await supabase
+      .from('usuarios')
+      .select('id, nombre, correo')
+      .eq('id', ticket.usuario_id)
+      .single()
+
+    // Obtener datos del técnico asignado (si existe)
+    let tecnico = null
+    if (ticket.tecnico_asignado_id) {
+      const { data: tecnicoData } = await supabase
+        .from('usuarios')
+        .select('id, nombre, correo, rol')
+        .eq('id', ticket.tecnico_asignado_id)
+        .single()
+      tecnico = tecnicoData
+    }
+
+    res.json({ ticket, creador, tecnico })
 
   } catch (error) {
     res.status(500).json({ error: error.message })
@@ -272,7 +309,7 @@ export const reasignarTecnico = async (req, res) => {
       .from('usuarios')
       .select('id, nombre, correo, rol')
       .eq('id', tecnico_asignado_id)
-      .in('rol', ['tecnico_n1', 'tecnico_n2'])
+      .in('rol', ['tecnico_n1', 'tecnico_n2', 'administrador'])
       .single()
 
     if (errorTecnico || !tecnico) {

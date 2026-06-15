@@ -74,8 +74,7 @@ export const enviarCorreoCambioEstado = async (usuario, ticket) => {
                   ${ticket.estado.toUpperCase()}
                 </span>
               </p>
-            </div>
-            
+            </div>            
             <p style="color: #666;">Puedes consultar el detalle de tu ticket en el sistema.</p>
           </div>
           
@@ -90,5 +89,51 @@ export const enviarCorreoCambioEstado = async (usuario, ticket) => {
     console.log(`✅ Correo enviado a ${usuario.correo}`)
   } catch (error) {
     console.error('❌ Error enviando correo:', error)
+  }
+}
+
+// ── CORREO: NUEVA RESPUESTA EN EL HILO ────────────────────────────────────────
+export const enviarCorreoNuevaRespuesta = async (destinatario, ticket, mensaje, autor) => {
+  try {
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: destinatario.correo,
+      subject: `💬 Nueva respuesta en tu ticket ${ticket.codigo}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #1F3864; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Sistema UTO</h1>
+            <p style="color: #BDD7EE; margin: 5px 0;">Gestión de Incidentes Tecnológicos</p>
+          </div>
+          
+          <div style="padding: 30px; background-color: #f9f9f9;">
+            <h2 style="color: #1F3864;">Hola ${destinatario.nombre},</h2>
+            <p><strong>${autor.nombre}</strong> respondió en el ticket <strong>${ticket.codigo}</strong>:</p>
+            
+            <div style="background-color: white; border-left: 4px solid #2E75B6; padding: 15px; margin: 20px 0;">
+              <p><strong>Ticket:</strong> ${ticket.titulo}</p>
+              <p><strong>Estado actual:</strong> 
+                <span style="color: #2E75B6; font-weight: bold;">
+                  ${ticket.estado.replace('_', ' ').toUpperCase()}
+                </span>
+              </p>
+              <p><strong>Mensaje:</strong></p>
+              <p style="background-color: #F2F2F2; padding: 10px; border-radius: 4px;">${mensaje}</p>
+            </div>
+            
+            <p style="color: #666;">Ingresa al sistema para responder.</p>
+          </div>
+          
+          <div style="background-color: #1F3864; padding: 15px; text-align: center;">
+            <p style="color: #BDD7EE; margin: 0; font-size: 12px;">
+              Universidad Tecnológica del Occidente — DTI 2026
+            </p>
+          </div>
+        </div>
+      `
+    })
+    console.log(`✅ Correo de respuesta enviado a ${destinatario.correo}`)
+  } catch (error) {
+    console.error('❌ Error enviando correo de respuesta:', error)
   }
 }

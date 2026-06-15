@@ -8,6 +8,7 @@ import {
   reasignarTecnico
 } from '../controllers/ticketController.js'
 import { verificarToken, verificarRol } from '../middlewares/authMiddleware.js'
+import comentarioRoutes from './comentarioRoutes.js'
 
 const router = Router()
 
@@ -31,5 +32,8 @@ router.patch('/:id/estado', verificarRol('administrador', 'tecnico_n1', 'tecnico
 
 // Reasignar técnico — solo admin
 router.patch('/:id/reasignar', verificarRol('administrador'), reasignarTecnico)
+
+// Comentarios de un ticket — anidado bajo /tickets/:id/comentarios
+router.use('/:id/comentarios', comentarioRoutes)
 
 export default router

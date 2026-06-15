@@ -6,7 +6,7 @@ import { listarTecnicos } from '../services/usuarioService'
 
 
 const Tickets = () => {
-  const { usuario } = useAuth()
+  const { usuario, cerrarSesion } = useAuth()
   const navigate = useNavigate()
 
   const [tickets, setTickets] = useState([])
@@ -37,6 +37,7 @@ const Tickets = () => {
       const data = await obtenerTickets()
       setTickets(data.tickets)
     } catch (err) {
+      console.error('ERROR REAL:', err)
       setError('No se pudieron cargar los tickets')
     } finally {
       setCargando(false)
@@ -98,6 +99,12 @@ const Tickets = () => {
 
   const puedeCambiarEstado = ['administrador', 'tecnico_n1', 'tecnico_n2'].includes(usuario?.rol)
   const esAdmin = usuario?.rol === 'administrador'
+  const nombresRoles = {
+    administrador: 'Administrador',
+    tecnico_n1: 'Técnico N1',
+    tecnico_n2: 'Técnico N2',
+    usuario_final: 'Usuario'
+  }
 
   // Filtrar tickets según búsqueda (código, título o categoría)
   const ticketsFiltrados = tickets.filter((t) =>
@@ -110,15 +117,25 @@ const Tickets = () => {
 
   return (
     <div style={estilos.contenedor}>
-      <nav style={estilos.navbar}>
+       <nav style={estilos.navbar}>
         <h2 style={estilos.logoNav}>Sistema UTO</h2>
         <div style={estilos.navDerecha}>
-          <button onClick={() => navigate('/dashboard')} style={estilos.botonNav}>
-            ← Dashboard
-          </button>
+          <span style={estilos.usuarioNav}>
+            {usuario?.nombre} · <strong>{nombresRoles[usuario?.rol] || usuario?.rol}</strong>
+          </span>
+          {esAdmin && (
+            <button onClick={() => navigate('/dashboard')} style={estilos.botonNav}>
+              ← Dashboard
+            </button>
+          )}
           <button onClick={() => navigate('/tickets/nuevo')} style={estilos.botonNuevo}>
             + Nuevo Ticket
           </button>
+          {!esAdmin && (
+            <button onClick={() => { cerrarSesion(); navigate('/login') }} style={estilos.botonSalir}>
+              Cerrar Sesión
+            </button>
+          )}
         </div>
       </nav>
 
@@ -156,6 +173,7 @@ const Tickets = () => {
                   <th style={estilos.th}>Título</th>
                   <th style={estilos.th}>Categoría</th>
                   {esAdmin && <th style={estilos.th}>Técnico Asignado</th>}
+                  {usuario?.rol === 'usuario_final' && <th style={estilos.th}>Atendido por</th>}
                   <th style={estilos.th}>Prioridad</th>
                   <th style={estilos.th}>Estado</th>
                   <th style={estilos.th}>SLA Límite</th>
@@ -167,12 +185,26 @@ const Tickets = () => {
               <tbody>
                  {ticketsFiltrados.map((ticket) => (
                   <tr key={ticket.id}>
-                    <td style={estilos.td}><strong>{ticket.codigo}</strong></td>
+                    <td style={estilos.td}>
+                      <strong
+                        onClick={() => navigate(`/tickets/${ticket.id}`)}
+                        style={estilos.linkCodigo}
+                      >
+                        {ticket.codigo}
+                      </strong>
+                    </td>
                     <td style={estilos.td}>{ticket.titulo}</td>
-                    <td style={estilos.td}>{ticket.categoria}</td>
+                    <td style={estilos.td}>
+                      {ticket.categoria.charAt(0).toUpperCase() + ticket.categoria.slice(1)}
+                    </td>
                     {esAdmin && (
                       <td style={estilos.td}>
                         {tecnicos.find(t => t.id === ticket.tecnico_asignado_id)?.nombre || 'Sin asignar'}
+                      </td>
+                    )}
+                    {usuario?.rol === 'usuario_final' && (
+                      <td style={estilos.td}>
+                        {ticket.tecnico_nombre || 'Sin asignar'}
                       </td>
                     )}
                     <td style={estilos.td}>
@@ -295,6 +327,19 @@ const estilos = {
     fontSize: '14px',
     fontWeight: 'bold'
   },
+   usuarioNav: {
+    color: '#BDD7EE',
+    fontSize: '14px'
+  },
+  botonSalir: {
+    backgroundColor: '#C00000',
+    color: 'white',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px'
+  },
   contenido: {
     padding: '30px'
   },
@@ -331,6 +376,11 @@ const estilos = {
     padding: '12px 14px',
     borderBottom: '1px solid #eee',
     color: '#333'
+  },
+  linkCodigo: {
+    color: '#2E75B6',
+    cursor: 'pointer',
+    textDecoration: 'underline'
   },
   badge: {
     color: 'white',

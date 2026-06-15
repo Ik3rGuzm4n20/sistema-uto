@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { login } from '../services/authService'
 import { useAuth } from '../context/AuthContext'
 
@@ -25,7 +25,13 @@ const Login = () => {
     try {
       const data = await login(correo, contrasena)
       iniciarSesion(data.token, data.usuario)
-      navigate('/dashboard')
+
+      // Redirigir según el rol del usuario
+      if (data.usuario.rol === 'usuario_final') {
+        navigate('/tickets')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Error al iniciar sesión')
     } finally {
@@ -78,6 +84,9 @@ const Login = () => {
             {cargando ? 'Ingresando...' : 'Iniciar Sesión'}
           </button>
         </form>
+        <p style={estilos.link}>
+          <Link to="/" style={estilos.linkTexto}>← Volver</Link>
+        </p>
       </div>
     </div>
   )
@@ -145,6 +154,17 @@ const estilos = {
     fontSize: '13px',
     textAlign: 'center',
     marginBottom: '15px'
+  },
+  link: {
+    textAlign: 'center',
+    fontSize: '13px',
+    color: '#666',
+    marginTop: '12px'
+  },
+  linkTexto: {
+    color: '#2E75B6',
+    textDecoration: 'none',
+    fontWeight: 'bold'
   },
   ojito: {
     position: 'absolute',
