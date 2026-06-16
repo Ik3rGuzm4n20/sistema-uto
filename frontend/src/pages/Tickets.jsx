@@ -123,7 +123,7 @@ const Tickets = () => {
           <span style={estilos.usuarioNav}>
             {usuario?.nombre} · <strong>{nombresRoles[usuario?.rol] || usuario?.rol}</strong>
           </span>
-          {esAdmin && (
+          {(esAdmin || usuario?.rol === 'tecnico_n1' || usuario?.rol === 'tecnico_n2') && (
             <button onClick={() => navigate('/dashboard')} style={estilos.botonNav}>
               ← Dashboard
             </button>
