@@ -282,6 +282,7 @@ export const dashboard = async (req, res) => {
       total: tickets.length,
       abiertos: tickets.filter(t => t.estado === 'abierto').length,
       en_proceso: tickets.filter(t => t.estado === 'en_proceso').length,
+      escalados: tickets.filter(t => t.estado === 'escalado').length,
       resueltos_hoy: tickets.filter(t =>
         t.estado === 'resuelto' &&
         new Date(t.created_at).toDateString() === hoy

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { obtenerDashboard } from '../services/ticketService'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { obtenerTickets } from '../services/ticketService'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const Dashboard = () => {
@@ -30,6 +33,114 @@ const Dashboard = () => {
   const handleLogout = () => {
     cerrarSesion()
     navigate('/login')
+  }
+  const generarPDF = async () => {
+    try {
+      const doc = new jsPDF()
+      const fecha = new Date().toLocaleString('es-GT')
+
+      // Encabezado
+      doc.setFillColor(31, 56, 100)
+      doc.rect(0, 0, 210, 28, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(18)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Sistema UTO', 14, 12)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Gestión de Incidentes Tecnológicos', 14, 20)
+      doc.text(`Generado: ${fecha}`, 210 - 14, 20, { align: 'right' })
+
+      // Título del reporte
+      doc.setTextColor(31, 56, 100)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Reporte de Dashboard', 14, 40)
+
+      // Métricas
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 100, 100)
+      doc.text('Métricas Generales del Sistema', 14, 50)
+
+      const metricasData = [
+        ['Total de Tickets', metricas?.total || 0],
+        ['Tickets Abiertos', metricas?.abiertos || 0],
+        ['En Proceso', metricas?.en_proceso || 0],
+        ['Críticos', metricas?.criticos || 0],
+        ['Resueltos Hoy', metricas?.resueltos_hoy || 0],
+        ['Cerrados', metricas?.cerrados || 0],
+      ]
+
+      autoTable(doc, {
+        startY: 55,
+        head: [['Métrica', 'Cantidad']],
+        body: metricasData,
+        headStyles: { fillColor: [31, 56, 100], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [240, 245, 255] },
+        styles: { fontSize: 10 },
+        columnStyles: { 1: { halign: 'center' } }
+      })
+
+      // Tabla de tickets
+      const ticketsY = doc.lastAutoTable.finalY + 15
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(31, 56, 100)
+      doc.text('Detalle de Tickets', 14, ticketsY)
+
+      const { tickets } = await obtenerTickets()
+
+      const ticketsData = tickets.map(t => [
+        t.codigo,
+        t.titulo.length > 30 ? t.titulo.substring(0, 30) + '...' : t.titulo,
+        t.categoria,
+        t.prioridad.toUpperCase(),
+        t.estado.replace('_', ' ').toUpperCase(),
+        new Date(t.sla_limite).toLocaleDateString('es-GT')
+      ])
+
+      const colorPrioridad = {
+        'CRITICA': [192, 0, 0],
+        'ALTA': [237, 125, 49],
+        'MEDIA': [255, 192, 0],
+        'BAJA': [112, 173, 71]
+      }
+
+      autoTable(doc, {
+        startY: ticketsY + 5,
+        head: [['Código', 'Título', 'Categoría', 'Prioridad', 'Estado', 'SLA Límite']],
+        body: ticketsData,
+        headStyles: { fillColor: [31, 56, 100], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        styles: { fontSize: 9 },
+        didParseCell: (data) => {
+          if (data.column.index === 3 && data.section === 'body') {
+            const color = colorPrioridad[data.cell.text[0]] || [100, 100, 100]
+            data.cell.styles.textColor = color
+            data.cell.styles.fontStyle = 'bold'
+          }
+        }
+      })
+
+      // Pie de página
+      const pageCount = doc.internal.getNumberOfPages()
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i)
+        doc.setFontSize(8)
+        doc.setTextColor(150, 150, 150)
+        doc.text(
+          `Universidad Tecnológica del Occidente — DTI 2026 | Página ${i} de ${pageCount}`,
+          105, 290, { align: 'center' }
+        )
+      }
+
+      doc.save(`Reporte_UTO_${new Date().toISOString().slice(0, 10)}.pdf`)
+
+    } catch (err) {
+      console.error('Error generando PDF:', err)
+      alert('No se pudo generar el reporte')
+    }
   }
 
   const esAdmin = usuario?.rol === 'Administrador'
@@ -139,6 +250,11 @@ const Dashboard = () => {
               <p style={estilos.label}>Críticos</p>
             </div>
 
+            <div style={{ ...estilos.card, borderLeft: '5px solid #C00000' }}>
+              <p style={estilos.numero}>{metricas.escalados}</p>
+              <p style={estilos.label}>Escalados</p>
+            </div>
+
             <div style={{ ...estilos.card, borderLeft: '5px solid #70AD47' }}>
               <p style={estilos.numero}>{metricas.resueltos_hoy}</p>
               <p style={estilos.label}>Resueltos Hoy</p>
@@ -151,9 +267,14 @@ const Dashboard = () => {
           </div>
         )}
 
-        <button onClick={() => navigate('/tickets/nuevo')} style={estilos.botonCrear}>
-          + Crear Nuevo Ticket
-        </button>
+        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+          <button onClick={() => navigate('/tickets/nuevo')} style={estilos.botonCrear}>
+            + Crear Nuevo Ticket
+          </button>
+          <button onClick={generarPDF} style={estilos.botonPDF}>
+            📄 Descargar Reporte PDF
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -261,6 +382,16 @@ const estilos = {
   },
   botonCrear: {
     backgroundColor: '#1F3864',
+    color: 'white',
+    border: 'none',
+    padding: '14px 28px',
+    borderRadius: '6px',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  },
+  botonPDF: {
+    backgroundColor: '#C00000',
     color: 'white',
     border: 'none',
     padding: '14px 28px',
